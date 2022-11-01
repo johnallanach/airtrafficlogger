@@ -46,8 +46,8 @@ def log():
         #spi = flight[15]
         #position_source = flight[16]
 
-        #if geo_altitude != None and geo_altitude < 6100 and longitude != None and latitude != None:
-        if latitude, longitude, geo_altitude != None and geo_altitude < 6100:
+        if geo_altitude != None and geo_altitude < 6100 and longitude != None and latitude != None:
+        #if latitude, longitude, geo_altitude != None and geo_altitude < 6100:
             print ("Defining Guelph air space...")
             try: 
                 if latitude > 43.473851 and latitude < 43.596306 and longitude > -80.326023 and longitude < -80.152473:
