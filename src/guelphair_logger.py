@@ -78,8 +78,6 @@ def log():
     else:
         print ("No aircrafts currently in Guelph airspace.")  
 
-#get_flight_lines()
-
 if __name__ == '__main__':
     log()
 
