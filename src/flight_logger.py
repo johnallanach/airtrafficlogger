@@ -21,33 +21,31 @@ def get_location_data():
     #'lat': '43.5460516', 'lon': '-80.2493276'
     #'display_name': 'Guelph, Southwestern Ontario, Ontario, Canada'
 
-    return
-    
-
-def get_flight_states():
-    resp = requests.get('https://opensky-network.org/api/states/all')
-    data = resp.json()
-    flight_states = data['states']
-
-    flights = len(flight_states)
-    print ("Current number of flight states: %d " % (flights)) 
-
-    return
+    return boundingbox
 
 
-def log():
-    resp = requests.get('https://opensky-network.org/api/states/all')
+
+def get_flight_states(boundingbox):
+
+    #'boundingbox': ['43.4738217', '43.594353', '-80.3269091', '-80.1535013']
+    lower_lat = float(boundingbox[0])
+    upper_lat = float(boundingbox[1])
+    lower_long = float(boundingbox[2])
+    upper_long = float(boundingbox[3])
+
+    #'https://opensky-network.org/api/states/all?lamin=30.038&lomin=-125.974&lamax=52.214&lomax=-68.748'
+    url = 'https://opensky-network.org/api/states/all?'+'lamin='+str(lower_lat)+'&lomin='+str(lower_long)+'&lamax='+str(upper_lat)+'&lomax='+str(upper_long)
+    resp = requests.get(url)
     data = resp.json()
     states = data['states']
-    
-    lower_lat = 43.4738217
-    upper_lat = 43.596306
-    lower_long = -80.326023
-    upper_long = -80.152473
 
-    flight_count = 0
+    return states
+
+
+
+def log_flights(states):
+
     for flight in states:
-
         #icao24 = flight[0]
         callsign = flight[1]
         origin_country = flight[2]
@@ -66,46 +64,41 @@ def log():
         #spi = flight[15]
         #position_source = flight[16]
 
-        #print ("Defining air space...")
-
         if geo_altitude != None and geo_altitude < 6100 and longitude != None and latitude != None:
         #if geo_altitude != None and longitude != None and latitude != None:
         #if latitude, longitude, geo_altitude != None and geo_altitude < 6100:
-            
-            try: 
-                if latitude > lower_lat and latitude < upper_lat and longitude > lower_long and longitude < upper_long:
-                    flight_count += 1
-                    
-                    callsign = str(callsign)
-                    callsign = callsign.split(" ")
-                    callsign = callsign[0]
-                    origin_country = str(origin_country)
-                    geo_altitude = int(geo_altitude)
-                            
-                    now = datetime.now()
-                    date = now.strftime("%m/%d/%Y")
-                    time = now.strftime("%H:%M:%S")
+            try:                
+                callsign = str(callsign)
+                callsign = callsign.split(" ")
+                callsign = callsign[0]
+                origin_country = str(origin_country)
+                geo_altitude = int(geo_altitude)
                         
-                    message = "%r, %r, %r, %r, %r, %r, %r, %r \n" % (date, time, geo_altitude, vertical_rate, callsign, origin_country, latitude, longitude)
-                    print (message)
+                now = datetime.now()
+                date = now.strftime("%m/%d/%Y")
+                time = now.strftime("%H:%M:%S")
                     
-                    print ("Writing to air_log...")
-                    with open('air_log.csv', mode='a') as csvfile:
-                        log_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                        log_writer.writerow([date, time, geo_altitude, vertical_rate, callsign, origin_country, latitude, longitude])
+                message = "%r, %r, %r, %r, %r, %r, %r, %r \n" % (date, time, geo_altitude, vertical_rate, callsign, origin_country, latitude, longitude)
+                print (message)
+                
+                print ("Writing to air_log...")
+                with open('air_log.csv', mode='a') as csvfile:
+                    log_writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+                    log_writer.writerow([date, time, geo_altitude, vertical_rate, callsign, origin_country, latitude, longitude])
             except: 
                 print ("Failed to log: %s" %flight)
 
-    if flight_count > 0: 
-        print ("Currently there are %d aircrafts in the defined airspace." % (flight_count)) 
-    else:
-        print ("No aircrafts currently in the defined airspace.")  
+
+
+def track_flights():
+    boundingbox = get_location_data()
+    while(True):
+        states = get_flight_states(boundingbox)
+        if len(states) > 0: 
+            log_flights(states)
+        time.sleep(15)
 
 
 if __name__ == '__main__':
-    #get_location_data()
-    #flight_states = get_flight_states()
-    log()
 
-
-#https://openflights.org/data.html
+    track_flights()
