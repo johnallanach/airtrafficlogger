@@ -3,18 +3,19 @@ from datetime import datetime
 import json
 import time
 
+#import pandas as pd
 import requests
 
 
 def get_location_data():
     #https://nominatim.org/release-docs/develop/api/Search/
-    city_input = str(input("Please enter city to track: "))
-    request_url = ('https://nominatim.openstreetmap.org/search?q='+city_input+
+    loc_input = str(input("Please enter location to track: "))
+    request_url = ('https://nominatim.openstreetmap.org/search?q='+loc_input+
                     '&format=json&addressdetails=1&limit=1&polygon_svg=1')
     geo_resp = requests.get(request_url)
     geo_data = geo_resp.json()
     if geo_data is  None:
-        print ("No location data found for %s" %city_input)
+        print ("No location data found for %s" %loc_input)
         exit()
     elif len(geo_data) == 1:
         geo_data = geo_data[0]
@@ -58,69 +59,101 @@ def get_flight_states(boundingbox):
 
 
 def log_flights(states, date, time):
-    with open('air_log.csv', mode='a') as csvfile:
+    with open('air_log.csv', mode='a', newline='') as csvfile:
         log_writer = csv.writer(csvfile, delimiter=',', quotechar='"',
                         quoting=csv.QUOTE_MINIMAL)
         for flight in states:
-            #COLLECT STATE FIELDS
-            #icao24 = flight[0]
-            callsign = flight[1]
-            origin_country = flight[2]
-            #time_position = flight[3]
-            #last_contact = flight[4]
-            longitude = flight[5]
-            latitude = flight[6]
-            geo_altitude = flight[7]
-            #on_ground = flight[8]
-            #velocity = flight[9]
-            true_track = flight[10]
-            vertical_rate = flight[11]
-            #sensors = flight[12]
-            #baro_altitude = flight[13]
-            #squawk = flight[14]
-            #spi = flight[15]
-            #position_source = flight[16]
+            try:
+                #COLLECT STATE FIELDS
+                #icao24 = flight[0]
+                callsign = flight[1]
+                origin_country = flight[2]
+                #time_position = flight[3]
+                #last_contact = flight[4]
+                longitude = flight[5]
+                latitude = flight[6]
+                geo_altitude = flight[7]
+                #on_ground = flight[8]
+                #velocity = flight[9]
+                true_track = flight[10]
+                vertical_rate = flight[11]
+                #sensors = flight[12]
+                #baro_altitude = flight[13]
+                #squawk = flight[14]
+                #spi = flight[15]
+                #position_source = flight[16]
 
-            #RE-FORMAT
-            callsign = str(callsign).split(" ")[0]
-            origin_country = str(origin_country)
-            geo_altitude = int(geo_altitude)
+                #RE-FORMAT
+                callsign = str(callsign).split(" ")[0]
+                origin_country = str(origin_country)
+                geo_altitude = int(geo_altitude)
 
-            #DEFINE FIELDS OF INTEREST
-            fields_to_log = [date, 
-                time, 
-                callsign, 
-                origin_country, 
-                latitude, 
-                longitude, 
-                geo_altitude, 
-                true_track, 
-                vertical_rate
-                ]
+                #DEFINE FIELDS OF INTEREST
+                fields_to_log = [date, 
+                    time, 
+                    callsign, 
+                    origin_country, 
+                    latitude, 
+                    longitude, 
+                    geo_altitude, 
+                    true_track, 
+                    vertical_rate
+                    ]
 
-            #WRITE TO AIR_LOG
-            if (geo_altitude != None and geo_altitude < 6100 
-                    and longitude != None and latitude != None):
-                try:                
+                #WRITE TO AIR_LOG
+                if (geo_altitude != None and geo_altitude < 6100
+                        and longitude != None and latitude != None):
                     update_message = "Writing to air_log... %r" % (callsign)
-                    #print ("\n")
                     print (update_message)
                     log_writer.writerow(fields_to_log)
-                except: 
-                    print ("Failed to log: %s" %flight)
+            except: 
+                print ("Failed to log: %s" %flight)
 
 
-def track_flights():
+'''
+def pandize():
+    #CONVERT TO PANDAS DATAFRAME
+    cols = ['date','time','callsign','origin_country',
+                'latitude','longitude','geo_altitude',
+                'true_track','vertical_rate']
+
+    flight_df=pd.DataFrame(states) 
+    flight_df.columns=col_name
+    flight_df=flight_df.fillna('No Data')
+
+
+def write_pandas_df_to_csv(flight_df):
+    flight_df = flight_df
+'''
+
+if __name__ == '__main__':
+    #DEFINE LOCATION TO TRACK
     boundingbox = get_location_data()
+    
+    #WRITE HEADER TO AIR_LOG
+    with open('air_log.csv', mode='a', newline='') as csvfile:
+        log_writer = csv.writer(csvfile, delimiter=',', quotechar='"',
+                        quoting=csv.QUOTE_MINIMAL)
+        header = ['date', 
+                    'time', 
+                    'callsign', 
+                    'origin_country', 
+                    'latitude', 
+                    'longitude', 
+                    'geo_altitude', 
+                    'true_track', 
+                    'vertical_rate'
+                    ]
+        log_writer.writerow(header)
+    
+    #GET FLIGHTS AND WRITE TO AIR_LOG
     while(True):
         states = get_flight_states(boundingbox)
         if states is not None:
             now = datetime.now()
-            date = now.strftime("%m/%d/%Y")
-            time = now.strftime("%H:%M:%S")
-            log_flights(states, date, time)
+            flight_date = now.strftime("%m/%d/%Y")
+            flight_time = now.strftime("%H:%M:%S")
+            log_flights(states, flight_date, flight_time)
         time.sleep(15)
+    #write_pandas_df_to_csv(flight_df)
 
-
-if __name__ == '__main__':
-    track_flights()
