@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 import time
 
-#import pandas as pd
+import pandas as pd
 import requests
 
 
@@ -20,8 +20,6 @@ def get_location_data():
     elif len(geo_data) == 1:
         geo_data = geo_data[0]
         boundingbox = geo_data['boundingbox']
-        #lat = geo_data['lat']
-        #lon = geo_data['lon']
         display_name = geo_data['display_name']
         print ("Beginning flight tracking for: %s" %display_name)
     elif len(geo_data) > 1:
@@ -53,84 +51,120 @@ def get_flight_states(boundingbox):
             '&lomax='+str(upper_long))
     resp = requests.get(url)
     data = resp.json()
-    states = data['states']
+    flight_states = data['states']
 
-    return states
+    return flight_states
 
 
-def log_flights(states, date, time):
-    with open('air_log.csv', mode='a', newline='') as csvfile:
-        log_writer = csv.writer(csvfile, delimiter=',', quotechar='"',
-                        quoting=csv.QUOTE_MINIMAL)
-        for flight in states:
-            try:
-                #COLLECT STATE FIELDS
-                #icao24 = flight[0]
-                callsign = flight[1]
-                origin_country = flight[2]
-                #time_position = flight[3]
-                #last_contact = flight[4]
-                longitude = flight[5]
-                latitude = flight[6]
-                geo_altitude = flight[7]
-                #on_ground = flight[8]
-                #velocity = flight[9]
-                true_track = flight[10]
-                vertical_rate = flight[11]
-                #sensors = flight[12]
-                #baro_altitude = flight[13]
-                #squawk = flight[14]
-                #spi = flight[15]
-                #position_source = flight[16]
-
-                #RE-FORMAT
-                callsign = str(callsign).split(" ")[0]
-                origin_country = str(origin_country)
-                geo_altitude = int(geo_altitude)
-
-                #DEFINE FIELDS OF INTEREST
-                fields_to_log = [date, 
-                    time, 
-                    callsign, 
-                    origin_country, 
-                    latitude, 
-                    longitude, 
-                    geo_altitude, 
-                    true_track, 
-                    vertical_rate
+def log_flights(flight_states, date, time, df_flights):
+    df_header = ['date', 
+                    'time', 
+                    'icao24',
+                    'callsign',
+                    'origin_country',
+                    'time_position',
+                    'last_contact',
+                    'longitude',
+                    'latitude',
+                    'geo_altitude',
+                    'on_ground',
+                    'velocity',
+                    'true_track',
+                    'vertical_rate',
+                    'sensors',
+                    'baro_altitude',
+                    'squawk',
+                    'spi',
+                    'position_source'
                     ]
 
-                #WRITE TO AIR_LOG
-                if (geo_altitude != None and geo_altitude < 6100
-                        and longitude != None and latitude != None):
-                    update_message = "Writing to air_log... %r" % (callsign)
-                    print (update_message)
-                    log_writer.writerow(fields_to_log)
-            except: 
-                print ("Failed to log: %s" %flight)
+    for flight in flight_states:
+        try:
+            #COLLECT STATE FIELDS
+            icao24 = flight[0]
+            callsign = flight[1]
+            origin_country = flight[2]
+            time_position = flight[3]
+            last_contact = flight[4]
+            longitude = flight[5]
+            latitude = flight[6]
+            geo_altitude = flight[7]
+            on_ground = flight[8]
+            velocity = flight[9]
+            true_track = flight[10]
+            vertical_rate = flight[11]
+            sensors = flight[12]
+            baro_altitude = flight[13]
+            squawk = flight[14]
+            spi = flight[15]
+            position_source = flight[16]
 
 
-'''
-def pandize():
-    #CONVERT TO PANDAS DATAFRAME
-    cols = ['date','time','callsign','origin_country',
-                'latitude','longitude','geo_altitude',
-                'true_track','vertical_rate']
+            #RE-FORMAT
+            callsign = str(callsign).split(" ")[0]
+            origin_country = str(origin_country)
 
-    flight_df=pd.DataFrame(states) 
-    flight_df.columns=col_name
-    flight_df=flight_df.fillna('No Data')
+            #TypeError: int() argument must be a string, a bytes-like 
+            # object or a number, not 'NoneType'
+            geo_altitude = int(geo_altitude)
 
+            #DEFINE FIELDS OF INTEREST
+            flight_data = [date, 
+                            time, 
+                            icao24,
+                            callsign,
+                            origin_country,
+                            time_position,
+                            last_contact,
+                            longitude,
+                            latitude,
+                            geo_altitude,
+                            on_ground,
+                            velocity,
+                            true_track,
+                            vertical_rate,
+                            sensors,
+                            baro_altitude,
+                            squawk,
+                            spi,
+                            position_source
+                            ]
 
-def write_pandas_df_to_csv(flight_df):
-    flight_df = flight_df
-'''
+            #WRITE TO AIR_LOG
+            if (geo_altitude != None and geo_altitude < 6100
+                    and longitude != None and latitude != None):
+                update_message = "Logging... %r" % (callsign)
+                print (update_message)
+                #log_writer.writerow(flight_data)
+                df_new_flight = pd.DataFrame([flight_data], columns=df_header)
+                df_flights = pd.concat([df_flights,df_new_flight], ignore_index=True)
+        except: 
+            #print ("Failed to log: %s" %flight)
+            pass
+
+    return df_flights
+     
 
 if __name__ == '__main__':
     #DEFINE LOCATION TO TRACK
     boundingbox = get_location_data()
-    
-    #WRITE HEADER TO AIR_LOG
+    df_flights = pd.DataFrame()
+
+    #GET FLIGHTS AND WRITE TO AIR_LOG
+    #while(True):
+    flight_states = get_flight_states(boundingbox)
+    if flight_states is not None:
+        now = datetime.now()
+        flight_date = now.strftime("%m/%d/%Y")
+        flight_time = now.strftime("%H:%M:%S")
+        df_flights = log_flights(flight_states, flight_date, 
+                                    flight_time, df_flights)
+        #time.sleep(15)
+
+    df_flights.to_csv('air_log.csv') 
+
+'''
+    #WRITE FLIGHTS DATAFRAME TO AIR_LOG
     with open('air_log.csv', mode='a', newline='') as csvfile:
         log_writer = csv.writer(csvfile, delimiter=',', quotechar='"',
                         quoting=csv.QUOTE_MINIMAL)
@@ -145,15 +179,5 @@ if __name__ == '__main__':
                     'vertical_rate'
                     ]
         log_writer.writerow(header)
-    
-    #GET FLIGHTS AND WRITE TO AIR_LOG
-    while(True):
-        states = get_flight_states(boundingbox)
-        if states is not None:
-            now = datetime.now()
-            flight_date = now.strftime("%m/%d/%Y")
-            flight_time = now.strftime("%H:%M:%S")
-            log_flights(states, flight_date, flight_time)
-        time.sleep(15)
-    #write_pandas_df_to_csv(flight_df)
-
+        log_writer.writerow(df_flights)
+'''
