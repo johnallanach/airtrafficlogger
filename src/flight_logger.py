@@ -99,16 +99,15 @@ def log_flights(flight_states, date, time, df_flights):
             spi = flight[15]
             position_source = flight[16]
 
-
             #RE-FORMAT
-            callsign = str(callsign).split(" ")[0]
-            origin_country = str(origin_country)
+            #callsign = str(callsign).split(" ")[0]
+            #origin_country = str(origin_country)
 
             #TypeError: int() argument must be a string, a bytes-like 
             # object or a number, not 'NoneType'
             geo_altitude = int(geo_altitude)
 
-            #DEFINE FIELDS OF INTEREST
+            # Define fields of interest
             flight_data = [date, 
                             time, 
                             icao24,
@@ -130,11 +129,11 @@ def log_flights(flight_states, date, time, df_flights):
                             position_source
                             ]
 
-            #WRITE TO AIR_LOG
+            # Write to air_log
             if (geo_altitude != None and geo_altitude < 6100
                     and longitude != None and latitude != None):
-                update_message = "Logging... %r" % (callsign)
-                print (update_message)
+                #update_message = "Logging... %r" % (callsign)
+                #print (update_message)
                 #log_writer.writerow(flight_data)
                 df_new_flight = pd.DataFrame([flight_data], columns=df_header)
                 df_flights = pd.concat([df_flights,df_new_flight], ignore_index=True)
@@ -146,38 +145,27 @@ def log_flights(flight_states, date, time, df_flights):
      
 
 if __name__ == '__main__':
-    #DEFINE LOCATION TO TRACK
+    
+    # Define location to track
     boundingbox = get_location_data()
+
+    # Create pandas database to hold flight data pre-logging
     df_flights = pd.DataFrame()
 
-    #GET FLIGHTS AND WRITE TO AIR_LOG
-    #while(True):
-    flight_states = get_flight_states(boundingbox)
-    if flight_states is not None:
-        now = datetime.now()
-        flight_date = now.strftime("%m/%d/%Y")
-        flight_time = now.strftime("%H:%M:%S")
-        df_flights = log_flights(flight_states, flight_date, 
-                                    flight_time, df_flights)
-        #time.sleep(15)
+    # Get flights and write to air_log
+    while(True):
+        flight_states = get_flight_states(boundingbox)
+        if flight_states is not None:
+            now = datetime.now()
+            flight_date = now.strftime("%m/%d/%Y")
+            flight_time = now.strftime("%H:%M:%S")
+            df_flights = log_flights(flight_states, flight_date, 
+                                        flight_time, df_flights)
+            
+            rows = len(df_flights.axes[0])  # Count number of rows
+            if rows > 500:
+                print ('Writing %d flights to air_log...' %rows)
+                df_flights.to_csv('air_log.csv', mode='a') 
+                df_flights = df_flights[0:0]    # Delete all rows 
 
-    df_flights.to_csv('air_log.csv') 
-
-'''
-    #WRITE FLIGHTS DATAFRAME TO AIR_LOG
-    with open('air_log.csv', mode='a', newline='') as csvfile:
-        log_writer = csv.writer(csvfile, delimiter=',', quotechar='"',
-                        quoting=csv.QUOTE_MINIMAL)
-        header = ['date', 
-                    'time', 
-                    'callsign', 
-                    'origin_country', 
-                    'latitude', 
-                    'longitude', 
-                    'geo_altitude', 
-                    'true_track', 
-                    'vertical_rate'
-                    ]
-        log_writer.writerow(header)
-        log_writer.writerow(df_flights)
-'''
+            time.sleep(15)
