@@ -7,9 +7,8 @@ import pandas as pd
 import requests
 
 
-def get_location_data():
+def get_location_data(loc_input):
     #https://nominatim.org/release-docs/develop/api/Search/
-    loc_input = str(input("Please enter location to track: "))
     request_url = ('https://nominatim.openstreetmap.org/search?q='+loc_input+
                     '&format=json&addressdetails=1&limit=1&polygon_svg=1')
     geo_resp = requests.get(request_url)
@@ -44,14 +43,17 @@ def get_flight_states(boundingbox):
     lower_long = float(boundingbox[2])
     upper_long = float(boundingbox[3])
 
-    #'https://opensky-network.org/api/states/all?lamin=30.038&lomin=\
-    #   -125.974&lamax=52.214&lomax=-68.748'
-    url = ('https://opensky-network.org/api/states/all?'+'lamin='+\
-            str(lower_lat)+'&lomin='+str(lower_long)+'&lamax='+str(upper_lat)+
-            '&lomax='+str(upper_long))
-    resp = requests.get(url)
-    data = resp.json()
-    flight_states = data['states']
+    try:
+        #'https://opensky-network.org/api/states/all?lamin=30.038&lomin=\
+        #   -125.974&lamax=52.214&lomax=-68.748'
+        url = ('https://opensky-network.org/api/states/all?'+'lamin='+\
+                str(lower_lat)+'&lomin='+str(lower_long)+'&lamax='+str(upper_lat)+
+                '&lomax='+str(upper_long))
+        resp = requests.get(url)
+        data = resp.json()
+        flight_states = data['states']
+    except:
+        flight_states = None
 
     return flight_states
 
@@ -144,10 +146,12 @@ def log_flights(flight_states, date, time, df_flights):
     return df_flights
      
 
-if __name__ == '__main__':
-    
+def main():
+
+    location_to_track = str(input("Please enter location to track: "))
+
     # Define location to track
-    boundingbox = get_location_data()
+    boundingbox = get_location_data(location_to_track)
 
     # Create pandas database to hold flight data pre-logging
     df_flights = pd.DataFrame()
@@ -169,3 +173,8 @@ if __name__ == '__main__':
                 df_flights = df_flights[0:0]    # Delete all rows 
 
             time.sleep(15)
+
+
+if __name__ == '__main__':
+
+    main()
